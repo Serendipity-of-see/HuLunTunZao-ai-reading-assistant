@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+/* 黑白灰极简设计语言 */
+:root {
+  --bg-primary: #FAFAFA;
+  --bg-surface: #FFFFFF;
+  --bg-hover: #F5F5F5;
+  --text-primary: #1A1A1A;
+  --text-secondary: #757575;
+  --text-tertiary: #BDBDBD;
+  --border: #E0E0E0;
+  --emphasis: #3B3B3B;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  margin: 0;
+}

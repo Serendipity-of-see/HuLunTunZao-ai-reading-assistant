@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/src-tauri/target/
+frontend/release/
+backend/build/
+backend/dist/
+
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.spec
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment & secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
