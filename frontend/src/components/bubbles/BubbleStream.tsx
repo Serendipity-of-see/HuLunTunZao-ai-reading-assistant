@@ -20,17 +20,29 @@ export default function BubbleStream({ bookId, onJumpToReader }: Props) {
   const [tree, setTree] = useState<TreeNode[]>([])
   const [depth, setDepth] = useState<Layer>(2)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [expanded, setExpanded] = useState<Set<number>>(new Set())
 
-  const loadTree = async () => {
-    setLoading(true)
-    const { tree } = await api.getTree(bookId)
-    setTree(tree)
-    setExpanded(new Set())
-    setLoading(false)
-  }
-
-  useEffect(() => { loadTree() }, [bookId])
+  useEffect(() => {
+    let cancelled = false
+    const loadTree = async () => {
+      setLoading(true)
+      setError('')
+      try {
+        const { tree } = await api.getTree(bookId)
+        if (!cancelled) {
+          setTree(tree)
+          setExpanded(new Set())
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e.message || '加载失败，请重试')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    loadTree()
+    return () => { cancelled = true }
+  }, [bookId])
 
   const toggleExpand = (nodeId: number) => {
     setExpanded(prev => {
@@ -107,11 +119,13 @@ export default function BubbleStream({ bookId, onJumpToReader }: Props) {
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading
           ? <div className="text-center text-sm text-[var(--text-secondary)] py-8">加载中...</div>
-          : tree.length === 0
-            ? <div className="text-center text-sm text-[var(--text-secondary)] py-8">
-                {depth === 1 ? '暂无概括级内容' : '暂无内容'}
-              </div>
-            : tree.map(node => renderNode(node))}
+          : error
+            ? <div className="text-center text-sm text-red-500 py-8">{error}</div>
+            : tree.length === 0
+              ? <div className="text-center text-sm text-[var(--text-secondary)] py-8">
+                  {depth === 1 ? '暂无概括级内容' : '暂无内容'}
+                </div>
+              : tree.map(node => renderNode(node))}
       </div>
     </div>
   )

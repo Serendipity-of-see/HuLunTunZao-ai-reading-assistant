@@ -1,12 +1,12 @@
 [package]
-name = "app"
+name = "huluntunzao"
 version = "0.1.0"
-description = "囫囵吞枣"
+description = "囫囵吞枣 — AI 辅助阅读器"
 authors = ["HuLunTunZao"]
 edition = "2021"
 
 [lib]
-name = "app_lib"
+name = "huluntunzao_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

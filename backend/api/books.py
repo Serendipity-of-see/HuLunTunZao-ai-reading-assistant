@@ -37,9 +37,13 @@ async def import_book(req: BookImportRequest):
         reuse = False
 
     # 异步启动 Phase 1 处理（不阻塞响应）
-    asyncio.create_task(
+    task = asyncio.create_task(
         process_book_phase1(book_id, file_path, req.reader_mode)
     )
+    def _on_done(t):
+        if exc := t.exception():
+            print(f"[ERROR] Book {book_id} processing task failed: {exc}")
+    task.add_done_callback(_on_done)
 
     return {
         "book_id": book_id,

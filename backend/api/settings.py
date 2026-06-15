@@ -29,9 +29,6 @@ async def update_settings(req: SettingsUpdate):
     if not req.api_key.strip():
         raise HTTPException(status_code=400, detail="API Key 不能为空")
     set_api_key(req.api_key.strip())
-    # 立即刷新模块级变量
-    import config
-    config.DEEPSEEK_API_KEY = config.get_api_key()
     return {"status": "saved", "api_key_configured": True}
 
 

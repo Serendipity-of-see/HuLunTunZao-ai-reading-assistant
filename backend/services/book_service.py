@@ -75,22 +75,23 @@ async def get_atoms(
     """分页获取 atoms。"""
     db = await get_db()
     try:
+        base_count = "SELECT COUNT(*) as cnt FROM atoms"
+        base_query = "SELECT * FROM atoms"
         if chapter_id:
-            where = "WHERE book_id = ? AND chapter_id = ?"
-            params = (book_id, chapter_id)
+            count_sql = f"{base_count} WHERE book_id = ? AND chapter_id = ?"
+            query_sql = f"{base_query} WHERE book_id = ? AND chapter_id = ? ORDER BY reading_order LIMIT ? OFFSET ?"
+            params_count = (book_id, chapter_id)
+            params_query = (book_id, chapter_id, limit, offset)
         else:
-            where = "WHERE book_id = ?"
-            params = (book_id,)
+            count_sql = f"{base_count} WHERE book_id = ?"
+            query_sql = f"{base_query} WHERE book_id = ? ORDER BY reading_order LIMIT ? OFFSET ?"
+            params_count = (book_id,)
+            params_query = (book_id, limit, offset)
 
-        cursor = await db.execute(
-            f"SELECT COUNT(*) as cnt FROM atoms {where}", params
-        )
+        cursor = await db.execute(count_sql, params_count)
         total = (await cursor.fetchone())["cnt"]
 
-        cursor = await db.execute(
-            f"SELECT * FROM atoms {where} ORDER BY reading_order LIMIT ? OFFSET ?",
-            (*params, limit, offset),
-        )
+        cursor = await db.execute(query_sql, params_query)
         rows = await cursor.fetchall()
         return [dict(row) for row in rows], total
     finally:

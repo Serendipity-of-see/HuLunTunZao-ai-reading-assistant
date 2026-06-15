@@ -14,7 +14,25 @@ async def lifespan(app: FastAPI):
     # 启动时初始化数据库
     await init_db()
     await migrate_processing_state()
+    # 清理上次异常退出遗留的 processing 状态
+    await _reset_stuck_processing()
     yield
+
+
+async def _reset_stuck_processing():
+    """将上次会话遗留的 processing 状态重置为 pending。"""
+    from db.connection import get_db
+    db = await get_db()
+    try:
+        cursor = await db.execute(
+            "UPDATE processing_state SET status='pending', error_message='Server restarted during processing' "
+            "WHERE status='processing'"
+        )
+        if cursor.rowcount > 0:
+            print(f"[STARTUP] Reset {cursor.rowcount} stuck 'processing' states to 'pending'")
+            await db.commit()
+    finally:
+        await db.close()
 
 
 app = FastAPI(
@@ -25,7 +43,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 开发阶段全允许
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:8765",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:8765",
+        "tauri://localhost",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -60,17 +60,13 @@ def get_settings() -> dict:
     key = get_api_key()
     masked = ""
     if key:
-        # 显示前4后4
         if len(key) > 8:
             masked = key[:4] + "*" * (len(key) - 8) + key[-4:]
         else:
             masked = key[:2] + "*" * (len(key) - 2)
+    user_config = _load_config()
     return {
         "api_key_configured": bool(key),
         "api_key_masked": masked,
-        "api_base_url": config.get("api_base_url", DEEPSEEK_BASE_URL),
+        "api_base_url": user_config.get("api_base_url", DEEPSEEK_BASE_URL),
     }
-
-
-# 动态获取 API Key（每次调用重新读取，支持运行时更新）
-DEEPSEEK_API_KEY = get_api_key()

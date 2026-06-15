@@ -77,6 +77,5 @@ class ProcessingStatus(BaseModel):
 
 
 class ReadingProgressRequest(BaseModel):
-    book_id: int
     chapter_id: int
     atom_position: int

@@ -44,19 +44,12 @@ export default function ReaderPage({ bookId, jumpTarget, onJumpConsumed }: Props
     if (targetCh) {
       setCurrentChapterId(targetCh.id)
       setScrollToAtomId(jumpTarget.atom_id)
-      loadAtomsForJump(targetCh.id)
+      loadAtoms(targetCh.id)
     }
     onJumpConsumed()
   }, [jumpTarget, chapters])
 
   const loadAtoms = async (chapterId: number) => {
-    setLoading(true)
-    const { atoms: atm } = await api.getAtoms(bookId, chapterId, 0, 9999)
-    setAtoms(atm)
-    setLoading(false)
-  }
-
-  const loadAtomsForJump = async (chapterId: number) => {
     setLoading(true)
     const { atoms: atm } = await api.getAtoms(bookId, chapterId, 0, 9999)
     setAtoms(atm)

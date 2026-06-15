@@ -1,17 +1,26 @@
 import type { Book, Chapter, Atom, Bubble, BubbleChildren, TreeNode, ProcessingStatus, ReaderMode } from '../types'
 
-const BASE = 'http://localhost:8765/api'
+// Vite dev: uses proxy from vite.config.ts. Production: direct to localhost.
+const API_HOST = import.meta.env.DEV ? '' : 'http://localhost:8765'
+const BASE = `${API_HOST}/api`
 
-async function fetchJSON<T>(url: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  if (!res.ok) {
-    const err = await res.text()
-    throw new Error(`API ${res.status}: ${err}`)
+async function fetchJSON<T>(url: string, options?: RequestInit, timeoutMs = 30000): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    const res = await fetch(`${BASE}${url}`, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      ...options,
+    })
+    if (!res.ok) {
+      const err = await res.text()
+      throw new Error(`API ${res.status}: ${err}`)
+    }
+    return res.json()
+  } finally {
+    clearTimeout(timer)
   }
-  return res.json()
 }
 
 export const api = {
@@ -57,7 +66,7 @@ export const api = {
   updateProgress: (bookId: number, chapterId: number, atomPosition: number) =>
     fetchJSON<{ status: string }>(`/reading-progress/${bookId}`, {
       method: 'PUT',
-      body: JSON.stringify({ book_id: bookId, chapter_id: chapterId, atom_position: atomPosition }),
+      body: JSON.stringify({ chapter_id: chapterId, atom_position: atomPosition }),
     }),
 
   // 处理进度

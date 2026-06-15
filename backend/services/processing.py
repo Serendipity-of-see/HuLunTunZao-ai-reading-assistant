@@ -62,6 +62,17 @@ async def process_book_phase1(book_id: int, file_path: str, reader_mode: str = "
     except Exception as e:
         print(f"[ERROR] process_book_phase1 failed for book {book_id}:")
         traceback.print_exc()
+        try:
+            db2 = await get_db()
+            await db2.execute(
+                "INSERT OR REPLACE INTO processing_state (book_id, chapter_id, step, status, error_message, updated_at) "
+                "VALUES (?, 0, 'parse', 'failed', ?, datetime('now'))",
+                (book_id, str(e)[:500]),
+            )
+            await db2.commit()
+            await db2.close()
+        except Exception:
+            pass
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -338,22 +349,18 @@ async def _write_l4_incremental(db, book_id, l4_groups):
 
 async def _write_l3_incremental(db, book_id, l4_groups, l3_scenes):
     """写入 L3 plot_nodes + 回填 L4→L3 父子关系。l4_groups 需含 atom_ids 以定位 L4 DB ID。"""
-    # 先构建 atom_id → l4_db_id 映射
+    # 批量查询 atom_id → l4_db_id
+    all_aids = [aid for g in l4_groups for aid in g.get("atom_ids", [])]
     atom_to_l4 = {}
-    for g in l4_groups:
+    if all_aids:
+        placeholders = ",".join("?" * len(all_aids))
         cursor = await db.execute(
-            "SELECT id FROM plot_nodes WHERE book_id=? AND layer=4 AND id IN "
-            "(SELECT plot_node_id FROM atoms WHERE id=?)",
-            (book_id, g["atom_ids"][0] if g.get("atom_ids") else 0),
+            f"SELECT id, plot_node_id FROM atoms WHERE id IN ({placeholders})",
+            all_aids,
         )
-        # 用更可靠的方式：通过 atom 关联找到 L4
-        for aid in g.get("atom_ids", []):
-            cursor2 = await db.execute(
-                "SELECT plot_node_id FROM atoms WHERE id=?", (aid,)
-            )
-            row = await cursor2.fetchone()
-            if row and row["plot_node_id"]:
-                atom_to_l4[aid] = row["plot_node_id"]
+        for r in await cursor.fetchall():
+            if r["plot_node_id"]:
+                atom_to_l4[r["id"]] = r["plot_node_id"]
 
     l3_db_ids = {}
     for idx, scene in enumerate(l3_scenes):
