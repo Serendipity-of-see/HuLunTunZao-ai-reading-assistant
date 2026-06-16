@@ -1,0 +1,6 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+langchain==0.3.13
+langchain-openai==0.2.14
+pydantic==2.10.4
+aiosqlite==0.20.0
