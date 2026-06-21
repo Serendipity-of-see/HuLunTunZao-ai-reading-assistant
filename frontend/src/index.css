@@ -1,20 +1,255 @@
 @import "tailwindcss";
 
-/* 黑白灰极简设计语言 */
+/* ═══════════════════════════════════════════════════════════════════
+   囫囵吞枣 — Paper & Ink 设计系统
+   Inspired by fine book design, letterpress printing, library rooms.
+   Warm cream papers, rich ink, vermillion accents, subtle gold.
+   ═══════════════════════════════════════════════════════════════════ */
+
 :root {
-  --bg-primary: #FAFAFA;
-  --bg-surface: #FFFFFF;
-  --bg-hover: #F5F5F5;
-  --text-primary: #1A1A1A;
-  --text-secondary: #757575;
-  --text-tertiary: #BDBDBD;
-  --border: #E0E0E0;
-  --emphasis: #3B3B3B;
+  /* ── Surface ── */
+  --bg-page:       #FBF7F0;
+  --bg-surface:    #FFFCF5;
+  --bg-raised:     #FFFFFF;
+  --bg-hover:      #F3EDE3;
+  --bg-active:     #EDE5D8;
+  --bg-overlay:    rgba(26, 20, 16, 0.04);
+
+  /* ── Text ── */
+  --text-primary:  #2E2720;
+  --text-body:     #3D3530;
+  --text-secondary:#8A7A6A;
+  --text-tertiary: #B8A898;
+  --text-inverse:  #FFFFFF;
+
+  /* ── Accent ── */
+  --accent:        #C4523A;
+  --accent-hover:  #A8432E;
+  --accent-soft:   rgba(196, 82, 58, 0.08);
+  --gold:          #B8954A;
+  --gold-soft:     rgba(184, 149, 74, 0.12);
+
+  /* ── Borders ── */
+  --border:        #E0D6C8;
+  --border-light:  #EDE5D8;
+  --border-focus:  #C4523A;
+
+  /* ── Status ── */
+  --success:       #5B8C5A;
+  --warning:       #C4943A;
+  --error:         #C4523A;
+
+  /* ── Typography ── */
+  --font-display:  'Noto Serif SC', 'Source Han Serif SC', 'SimSun', serif;
+  --font-body:     'Noto Serif SC', 'Source Han Serif SC', Georgia, serif;
+  --font-ui:       'Noto Sans SC', 'Source Han Sans SC', 'Microsoft YaHei', sans-serif;
+
+  /* ── Shadows ── */
+  --shadow-sm:     0 1px 2px rgba(26, 20, 16, 0.04);
+  --shadow-md:     0 2px 8px rgba(26, 20, 16, 0.06);
+  --shadow-lg:     0 4px 16px rgba(26, 20, 16, 0.08);
+
+  /* ── Radii ── */
+  --radius-sm:     4px;
+  --radius-md:     6px;
+  --radius-lg:     10px;
+
+  /* ── Transitions ── */
+  --ease-out:      cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out:   cubic-bezier(0.65, 0, 0.35, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
 }
 
+/* Dark mode */
+.dark {
+  --bg-page:       #1A1410;
+  --bg-surface:    #221C16;
+  --bg-raised:     #2A231C;
+  --bg-hover:      #302820;
+  --bg-active:     #3A3028;
+  --bg-overlay:    rgba(255, 252, 245, 0.04);
+  --text-primary:  #F0E8DC;
+  --text-body:     #D8CFC0;
+  --text-secondary:#A09080;
+  --text-tertiary: #6A5E50;
+  --text-inverse:  #1A1410;
+  --border:        #3A3028;
+  --border-light:  #302820;
+  --shadow-sm:     0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md:     0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-lg:     0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* ── Global ── */
 body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  background: var(--bg-page);
+  color: var(--text-body);
+  font-family: var(--font-ui);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
+  transition: background var(--duration-slow) var(--ease-out),
+              color var(--duration-slow) var(--ease-out);
+}
+
+
+/* ── Subtle paper texture ── */
+body:not(.dark)::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.015;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(26,20,16,0.04) 2px, rgba(26,20,16,0.04) 4px);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--text-tertiary);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+
+/* ── Selection ── */
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Animation Keyframes
+   ═══════════════════════════════════════════════════════════════════ */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes expandIn {
+  from { opacity: 0; max-height: 0; }
+  to { opacity: 1; max-height: 2000px; }
+}
+
+.animate-fade-in { animation: fadeIn var(--duration-normal) var(--ease-out) forwards; }
+.animate-slide-up { animation: slideUp var(--duration-normal) var(--ease-out) forwards; }
+.animate-slide-down { animation: slideDown var(--duration-normal) var(--ease-out) forwards; }
+.animate-scale-in { animation: scaleIn var(--duration-fast) var(--ease-out) forwards; }
+.animate-shimmer {
+  background: linear-gradient(90deg, var(--bg-hover) 25%, var(--bg-active) 50%, var(--bg-hover) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+.animate-expand-in { animation: expandIn var(--duration-normal) var(--ease-in-out) forwards; }
+
+/* Stagger children */
+.stagger > * { opacity: 0; animation: slideUp var(--duration-slow) var(--ease-out) forwards; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 50ms; }
+.stagger > *:nth-child(3) { animation-delay: 100ms; }
+.stagger > *:nth-child(4) { animation-delay: 150ms; }
+.stagger > *:nth-child(5) { animation-delay: 200ms; }
+.stagger > *:nth-child(6) { animation-delay: 250ms; }
+.stagger > *:nth-child(n+7) { animation-delay: 300ms; }
+
+/* ── Processing Progress ── */
+@keyframes inkReveal {
+  from { opacity: 0; transform: translateX(-6px); filter: blur(2px); }
+  to   { opacity: 1; transform: translateX(0); filter: blur(0); }
+}
+@keyframes titleFlash {
+  0%   { background-color: var(--accent-soft); }
+  100% { background-color: transparent; }
+}
+@keyframes progressPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-soft); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes dotPop {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+@keyframes barGlow {
+  0%, 100% { box-shadow: 0 0 4px rgba(196, 82, 58, 0.15); }
+  50%      { box-shadow: 0 0 12px rgba(196, 82, 58, 0.3); }
+}
+@keyframes connectingPulse {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 1; }
+}
+@keyframes badgeSlideIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-ink-reveal     { animation: inkReveal 350ms var(--ease-out) forwards; }
+.animate-title-flash    { animation: titleFlash 1.8s var(--ease-out); }
+.animate-progress-pulse { animation: progressPulse 2s infinite; }
+.animate-dot-pop        { animation: dotPop 300ms var(--ease-out) forwards; }
+.animate-bar-glow       { animation: barGlow 2.5s infinite; }
+.animate-connecting     { animation: connectingPulse 1.2s infinite; }
+.animate-badge-slide-in { animation: badgeSlideIn 300ms var(--ease-out) forwards; }
+
+/* Progress bar shimmer sweep (for indeterminate steps like L2/L1) */
+@keyframes progressShimmer {
+  0%   { left: -30%; }
+  100% { left: 100%; }
+}
+.progress-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+/* Atom jump highlight */
+@keyframes atomHighlight {
+  0%   { background-color: rgba(196, 82, 58, 0.18); }
+  100% { background-color: transparent; }
+}
+.atom-highlight {
+  border-radius: 2px;
+  animation: atomHighlight 5s var(--ease-out) forwards;
+}
+
+.progress-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0; left: -30%;
+  width: 30%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,252,245,0.5), transparent);
+  animation: progressShimmer 1.4s infinite ease-in-out;
 }

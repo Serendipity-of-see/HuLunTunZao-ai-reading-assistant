@@ -25,10 +25,11 @@ async def get_current_settings():
 
 @router.put("")
 async def update_settings(req: SettingsUpdate):
-    """更新 API Key 和端点 URL。"""
-    if not req.api_key.strip():
-        raise HTTPException(status_code=400, detail="API Key 不能为空")
-    set_api_key(req.api_key.strip())
+    """更新 API Key 和端点 URL。Key 为空时只更新 URL。"""
+    key = req.api_key.strip() if req.api_key else ""
+    if not key and not req.api_base_url:
+        raise HTTPException(status_code=400, detail="API Key 和端点至少填写一项")
+    set_api_key(key, req.api_base_url)
     return {"status": "saved", "api_key_configured": True}
 
 

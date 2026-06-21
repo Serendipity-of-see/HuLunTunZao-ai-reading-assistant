@@ -9,6 +9,10 @@ CREATE TABLE IF NOT EXISTS books (
     genre_tags TEXT DEFAULT '[]',       -- JSON array
     narrative_summary TEXT,
     total_chars INTEGER DEFAULT 0,
+    processing_time REAL DEFAULT 0,
+    tokens_in INTEGER DEFAULT 0,
+    tokens_out INTEGER DEFAULT 0,
+    model_used TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
     updated_at TEXT DEFAULT (datetime('now'))
 );

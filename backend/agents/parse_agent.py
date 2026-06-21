@@ -1,5 +1,6 @@
 import re
 from typing import List, Tuple
+from html.parser import HTMLParser
 
 
 # 章节标题正则（匹配 "第X章"、"Chapter X"、"第X回" 等）
@@ -74,27 +75,74 @@ def split_sentences(text: str) -> List[str]:
     return merged
 
 
+class _TextExtractor(HTMLParser):
+    """轻量 HTML → 纯文本，不依赖 bs4。"""
+    def __init__(self):
+        super().__init__()
+        self.text = []
+        self.skip = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ('script', 'style', 'head', 'title'):
+            self.skip = True
+
+    def handle_endtag(self, tag):
+        if tag in ('script', 'style', 'head', 'title'):
+            self.skip = False
+        if tag in ('p', 'div', 'br', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'tr'):
+            self.text.append('\n')
+
+    def handle_data(self, data):
+        if not self.skip:
+            self.text.append(data.strip())
+
+
+def _extract_epub(file_path: str) -> str:
+    """从 EPUB 提取纯文本。"""
+    from ebooklib import epub
+
+    book = epub.read_epub(file_path)
+    chapters = []
+
+    for item in book.get_items_of_type(9):  # ITEM_DOCUMENT = 9
+        html = item.get_body_content().decode('utf-8', errors='replace')
+        parser = _TextExtractor()
+        parser.feed(html)
+        text = ' '.join(parser.text).strip()
+        if text:
+            # 合并多余空白
+            text = re.sub(r'\n{3,}', '\n\n', text)
+            text = re.sub(r' +', ' ', text)
+            chapters.append(text)
+
+    return '\n\n'.join(chapters)
+
+
 def parse_book(file_path: str) -> dict:
     """
-    解析 TXT 文件，返回结构化数据。
+    解析 TXT / EPUB 文件，返回结构化数据。
     返回: {
         "chapters": [{"title": str, "index": int, "atoms": [str, ...]}, ...],
         "total_chars": int,
         "total_atoms": int
     }
     """
-    # 尝试多种编码
-    content = None
-    for enc in ['utf-8', 'gbk', 'gb2312', 'gb18030']:
-        try:
-            with open(file_path, 'r', encoding=enc) as f:
-                content = f.read()
-            break
-        except (UnicodeDecodeError, UnicodeError):
-            continue
+    # EPUB 支持
+    if file_path.lower().endswith('.epub'):
+        content = _extract_epub(file_path)
+    else:
+        # TXT：尝试多种编码
+        content = None
+        for enc in ['utf-8', 'gbk', 'gb2312', 'gb18030']:
+            try:
+                with open(file_path, 'r', encoding=enc) as f:
+                    content = f.read()
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
 
-    if content is None:
-        raise ValueError(f"无法识别文件编码: {file_path}")
+        if content is None:
+            raise ValueError(f"无法识别文件编码: {file_path}")
 
     total_chars = len(content)
     chapters = split_chapters(content)

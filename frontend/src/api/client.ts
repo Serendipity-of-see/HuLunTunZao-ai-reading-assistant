@@ -1,4 +1,4 @@
-import type { Book, Chapter, Atom, Bubble, BubbleChildren, TreeNode, ProcessingStatus, ReaderMode } from '../types'
+import type { Book, Chapter, Atom, Bubble, BubbleChildren, TreeNode, ProcessingStatus, HltzExport } from '../types'
 
 // Vite dev: uses proxy from vite.config.ts. Production: direct to localhost.
 const API_HOST = import.meta.env.DEV ? '' : 'http://localhost:8765'
@@ -25,11 +25,21 @@ async function fetchJSON<T>(url: string, options?: RequestInit, timeoutMs = 3000
 
 export const api = {
   // 书籍
-  importBook: (filePath: string, readerMode: ReaderMode) =>
+  importBook: (file: File) =>
     fetchJSON<{ book_id: number; status: string }>('/books/import', {
       method: 'POST',
-      body: JSON.stringify({ file_path: filePath, reader_mode: readerMode }),
+      body: JSON.stringify({ file_path: file.name, reader_mode: 'familiar' }),
     }),
+
+  importBookFile: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 300000)
+    return fetch(`${BASE}/books/import-file`, {
+      method: 'POST', body: form, signal: controller.signal,
+    }).then(res => { clearTimeout(timer); if (!res.ok) return res.text().then(e => { throw new Error(e) }); return res.json() as Promise<{ book_id: number; status: string }> })
+  },
 
   listBooks: () =>
     fetchJSON<Book[]>('/books'),
@@ -76,14 +86,43 @@ export const api = {
   retryProcessing: (bookId: number) =>
     fetchJSON<{ status: string }>(`/books/${bookId}/retry`, { method: 'POST' }),
 
+  cancelProcessing: (bookId: number) =>
+    fetchJSON<{ status: string }>(`/books/${bookId}/cancel`, { method: 'POST' }),
+
+  // 导入导出
+  deleteBook: (bookId: number) =>
+    fetchJSON<{ status: string }>(`/books/${bookId}`, { method: 'DELETE' }),
+
+  exportBook: (bookId: number) =>
+    fetchJSON<HltzExport>(`/books/${bookId}/export`),
+
+  importHltz: (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 120000)
+    return fetch(`${BASE}/books/import-hltz`, {
+      method: 'POST',
+      body: form,
+      signal: controller.signal,
+    }).then(res => {
+      clearTimeout(timer)
+      if (!res.ok) return res.text().then(e => { throw new Error(e) })
+      return res.json() as Promise<{ book_id: number; status: string }>
+    }).catch(e => {
+      clearTimeout(timer)
+      throw e
+    })
+  },
+
   // 设置
   getSettings: () =>
     fetchJSON<{ api_key_configured: boolean; api_key_masked: string; api_base_url: string }>('/settings'),
 
-  updateSettings: (apiKey: string) =>
+  updateSettings: (apiKey: string, apiBaseUrl?: string) =>
     fetchJSON<{ status: string }>('/settings', {
       method: 'PUT',
-      body: JSON.stringify({ api_key: apiKey }),
+      body: JSON.stringify({ api_key: apiKey, api_base_url: apiBaseUrl }),
     }),
 
   validateApiKey: () =>

@@ -15,7 +15,6 @@ DB_PATH = DATA_DIR / "hltz.db"
 # DeepSeek API
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 DEEPSEEK_MODEL = "deepseek-v4-flash"
-DEEPSEEK_PRO_MODEL = "deepseek-v4-pro"
 
 # Token 预算
 TOKEN_BUDGET = 800_000
@@ -48,10 +47,13 @@ def get_api_key() -> str:
     return _load_config().get("deepseek_api_key", "")
 
 
-def set_api_key(key: str):
-    """持久化保存 API Key。"""
+def set_api_key(key: str, api_base_url: str | None = None):
+    """持久化保存 API Key 和端点 URL。key 为空时只更新 URL。"""
     config = _load_config()
-    config["deepseek_api_key"] = key
+    if key:
+        config["deepseek_api_key"] = key
+    if api_base_url:
+        config["api_base_url"] = api_base_url
     _save_config(config)
 
 

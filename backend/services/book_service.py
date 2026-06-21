@@ -27,7 +27,7 @@ async def create_book(file_path: str, reader_mode: str, title: str = None) -> di
 
 
 async def get_book(book_id: int) -> dict | None:
-    """获取书籍详情。"""
+    """获取书籍详情（含处理状态）。"""
     db = await get_db()
     try:
         cursor = await db.execute("SELECT * FROM books WHERE id = ?", (book_id,))
@@ -42,6 +42,23 @@ async def get_book(book_id: int) -> dict | None:
         )
         count_row = await cursor2.fetchone()
         row_dict["chapter_count"] = count_row["cnt"] if count_row else 0
+
+        # 计算 processing_status
+        cursor3 = await db.execute(
+            """SELECT CASE
+                WHEN EXISTS(SELECT 1 FROM processing_state WHERE book_id=? AND status='failed')
+                    THEN 'failed'
+                WHEN EXISTS(SELECT 1 FROM processing_state WHERE book_id=? AND status='processing')
+                    THEN 'processing'
+                WHEN (SELECT COUNT(*) FROM processing_state WHERE book_id=? AND status!='complete') = 0
+                     AND (SELECT COUNT(*) FROM processing_state WHERE book_id=?) > 0
+                    THEN 'complete'
+                ELSE 'pending'
+            END as status""",
+            (book_id, book_id, book_id, book_id),
+        )
+        status_row = await cursor3.fetchone()
+        row_dict["processing_status"] = status_row["status"] if status_row else "pending"
 
         # 解析 JSON 字段
         if row_dict.get("genre_tags"):

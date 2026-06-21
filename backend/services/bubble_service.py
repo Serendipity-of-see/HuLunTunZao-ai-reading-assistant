@@ -6,35 +6,27 @@ async def get_bubbles(
     book_id: int,
     layer: int = 2,
 ) -> list[dict]:
-    """
-    获取气泡流。
-    layer: 1=L1事件标题, 2=L2小事件摘要, 3=L3场景摘要
-    """
+    """获取气泡流。layer: 1=L1事件标题, 2=L2小事件摘要, 3=L3场景摘要"""
     db = await get_db()
     try:
-        query = """
-            SELECT pn.*,
+        cursor = await db.execute(
+            """SELECT pn.*,
                 (SELECT COUNT(*) FROM plot_nodes child WHERE child.parent_id = pn.id) as child_count
             FROM plot_nodes pn
             WHERE pn.book_id = ? AND pn.layer = ?
-            ORDER BY pn.id
-        """
-        params = (book_id, layer)
-
-        cursor = await db.execute(query, params)
+            ORDER BY pn.id""",
+            (book_id, layer),
+        )
         rows = await cursor.fetchall()
-
         bubbles = []
         for row in rows:
             row_dict = dict(row)
-            # content 按 layer 映射
             if layer == 1:
                 content = row_dict.get("title", "")
             elif layer == 2:
                 content = row_dict.get("summary", "")
             else:
                 content = row_dict.get("detail", "") or row_dict.get("summary", "")
-
             bubbles.append({
                 "id": row_dict["id"],
                 "layer": layer,
@@ -47,9 +39,7 @@ async def get_bubbles(
                 "has_cross_refs": bool(row_dict.get("cross_refs") and row_dict["cross_refs"] != "[]"),
                 "atom_ids": [],
             })
-
         return bubbles
-
     finally:
         await db.close()
 
@@ -58,7 +48,6 @@ async def get_bubble_children(book_id: int, node_id: int) -> dict:
     """获取某气泡的子节点 + L3 展开时获取 L4 句子组和原始 atoms"""
     db = await get_db()
     try:
-        # 获取当前节点信息
         cursor = await db.execute(
             "SELECT * FROM plot_nodes WHERE id = ? AND book_id = ?",
             (node_id, book_id),
@@ -71,7 +60,6 @@ async def get_bubble_children(book_id: int, node_id: int) -> dict:
         layer = node_dict["layer"]
 
         if layer == 3:
-            # 展开 L3：获取下属 L4 句子组及其原始 atoms
             cursor = await db.execute(
                 """SELECT pn.* FROM plot_nodes pn
                    WHERE pn.parent_id = ? AND pn.layer = 4
@@ -79,11 +67,9 @@ async def get_bubble_children(book_id: int, node_id: int) -> dict:
                 (node_id,),
             )
             l4_rows = await cursor.fetchall()
-
             groups = []
             for l4 in l4_rows:
                 l4_dict = dict(l4)
-                # 获取 L4 关联的原始 atoms
                 cursor2 = await db.execute(
                     "SELECT id, content FROM atoms WHERE plot_node_id = ? ORDER BY reading_order",
                     (l4_dict["id"],),
@@ -94,11 +80,9 @@ async def get_bubble_children(book_id: int, node_id: int) -> dict:
                     "summary": l4_dict.get("summary", ""),
                     "atoms": [{"id": a["id"], "content": a["content"]} for a in atom_rows],
                 })
-
             return {"l4_groups": groups}
 
         elif layer in (1, 2):
-            # 展开 L1 或 L2：返回子节点列表
             child_layer = layer + 1
             cursor = await db.execute(
                 """SELECT pn.*,
@@ -109,65 +93,100 @@ async def get_bubble_children(book_id: int, node_id: int) -> dict:
                 (node_id, child_layer),
             )
             children = await cursor.fetchall()
-
             return {
                 "children": [
                     {
-                        "id": c["id"],
-                        "layer": child_layer,
+                        "id": c["id"], "layer": child_layer,
                         "title": c["title"],
                         "content": c["summary"] if child_layer == 2 else (c["detail"] or c["summary"]),
-                        "importance": c["importance"],
-                        "child_count": c["child_count"],
+                        "importance": c["importance"], "child_count": c["child_count"],
                     }
                     for c in children
                 ]
             }
 
         return {"l4_groups": []}
-
     finally:
         await db.close()
 
 
+# ══════════════════════════════════════════════════════════════════════
+# 树构建
+# ══════════════════════════════════════════════════════════════════════
+
+def _is_ph(node: dict) -> bool:
+    """占位节点：标题为空即占位。"""
+    return not (node.get("title") or "").strip()
+
+
+def _hide_empty_placeholders(nodes: list[dict]) -> list[dict]:
+    """某层同时有真实节点和空占位时，移除空占位。递归。"""
+    for node in nodes:
+        node["children"] = _hide_empty_placeholders(node.get("children", []))
+
+    real = [n for n in nodes if not _is_ph(n)]
+    phs = [n for n in nodes if _is_ph(n)]
+
+    if not real:
+        return nodes  # 全是占位，全部保留
+
+    # 有真实节点时：保留仍有"非占位子节点"的占位（L3-PH 有 L4 就不藏）
+    def _has_real_child(n: dict) -> bool:
+        for c in n.get("children", []):
+            if not _is_ph(c):
+                return True
+        return False
+    keep_ph = [n for n in phs if _has_real_child(n)]
+    return real + keep_ph
+
+
 async def get_tree(book_id: int) -> list[dict]:
-    """返回完整情节树（嵌套）。若无 L1 则从 L2 起步。"""
+    """返回完整情节树。始终从 L1 起步，解析前后根层级一致。"""
     db = await get_db()
     try:
-        for start_layer in (1, 2):
+        for start_layer in (1, 2, 3):
             cursor = await db.execute(
                 """SELECT pn.*, (SELECT COUNT(*) FROM plot_nodes child WHERE child.parent_id = pn.id) as child_count
-                   FROM plot_nodes pn WHERE pn.book_id = ? AND pn.layer = ? AND pn.parent_id IS NULL
+                   FROM plot_nodes pn WHERE pn.book_id = ? AND pn.layer = ?
                    ORDER BY pn.id""",
                 (book_id, start_layer),
             )
             roots = await cursor.fetchall()
-            if roots: break
-
-        return [await _build_tree(db, dict(r)) for r in roots] if roots else []
+            if roots:
+                break
+        if not roots:
+            return []
+        trees = [await _build_tree(db, dict(r)) for r in roots]
+        return _hide_empty_placeholders(trees)
     finally:
         await db.close()
 
 
 async def _build_tree(db, node: dict) -> dict:
     layer, nid = node["layer"], node["id"]
-    content = node.get("title") if layer == 1 else (node.get("summary") if layer in (2, 4) else (node.get("detail") or node.get("summary") or ""))
+    content = (
+        node.get("title") if layer == 1 else
+        node.get("summary") if layer in (2, 4) else
+        (node.get("detail") or node.get("summary") or "")
+    )
     result = {
         "id": nid, "layer": layer, "title": node.get("title", ""), "content": content,
         "importance": node.get("importance", 5), "story_time_label": node.get("st_label"),
         "child_count": node.get("child_count", 0),
         "has_cross_refs": bool(node.get("cross_refs") and node["cross_refs"] != "[]"),
+        "cross_refs": json.loads(node["cross_refs"]) if node.get("cross_refs") and node["cross_refs"] != "[]" else [],
         "children": [],
     }
     cursor = await db.execute(
         """SELECT pn.*, (SELECT COUNT(*) FROM plot_nodes child WHERE child.parent_id = pn.id) as child_count
-           FROM plot_nodes pn WHERE pn.parent_id = ? AND pn.layer = ? ORDER BY pn.id""",
-        (nid, layer + 1),
+           FROM plot_nodes pn WHERE pn.parent_id = ? ORDER BY pn.layer, pn.id""",
+        (nid,),
     )
     for child in await cursor.fetchall():
         cd = dict(child)
+        if cd.get("layer") == 0 and cd.get("node_type") == "summary":
+            continue
         if layer == 3:
-            # 查询 L4 的第一个 atom 作为跳转锚点
             cursor2 = await db.execute(
                 """SELECT a.id, a.reading_order, c.index_num as chapter_index
                    FROM atoms a JOIN chapters c ON a.chapter_id = c.id

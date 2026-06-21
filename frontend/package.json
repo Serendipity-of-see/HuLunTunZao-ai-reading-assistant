@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "tauri-dev": "concurrently -n backend,frontend -c blue,green \"cd ../backend && python -m uvicorn main:app --host 127.0.0.1 --port 8765\" \"vite --port 5173\"",
+    "tauri-dev": "concurrently -n backend,frontend -c blue,green \"cd ../backend && python -m uvicorn main:app --host 127.0.0.1 --port 8765 --reload\" \"vite --port 5173\"",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

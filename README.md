@@ -2,7 +2,7 @@
 
 AI 辅助阅读器。导入 TXT 小说 → 用 DeepSeek 大模型自动生成三层情节档案（气泡流）→ 在阅读器中边读边查看章节结构。
 
-![](https://img.shields.io/badge/status-MVP-blue)
+![](https://img.shields.io/badge/version-0.2-orange)
 ![](https://img.shields.io/badge/license-MIT-green)
 
 ## 技术栈
@@ -66,25 +66,26 @@ frontend/           React 前端
 └── src-tauri/      Tauri 桌面壳 (Rust)
 ```
 
-## MVP 功能
+## 功能
 
-- [x] TXT 导入（多编码自动检测）
-- [x] Parse Agent 规则引擎分章分句
-- [x] Plot Agent DeepSeek Flash 自底向上 L4→L3→L2
-- [x] Merge Agent DeepSeek Pro L2→L1 + 全书叙事概括
-- [x] 阅读器（章节切换、滚动进度追踪、气泡跳转定位）
-- [x] 气泡流档案（三档深度 L1/L2/L3、树形展开/收起）
-- [x] 断点续处理（processing_state 每步 checkpoint）
-- [x] Tauri 桌面壳一键启动后端
-- [x] API Key 本地持久化（~/.huluntunzao/config.json）
+- [x] TXT + EPUB 导入
+- [x] AI 处理管线（Parse → L4语义分组 → L3场景聚合 → L2跨章事件 → L1宏观叙事）
+- [x] SSE 实时进度追踪（步骤指示器 + 场景标题流）
+- [x] 阅读器（章节/字号/主题/跳转定位）
+- [x] 气泡流档案（L1-L3 展开搜索、L4 精简摘要）
+- [x] 断点续处理
+- [x] .hltz 导入导出
+- [x] API Key + 端点 URL 配置
+- [x] Tauri 桌面壳
 
-## 待实现
+## 路线图
 
-- [ ] Character Agent + Relation Agent + 关系图视图
-- [ ] EPUB 格式支持
-- [ ] 故事时间排序（story_time sort）
-- [ ] BubbleMemoryManager 上下文压缩（大书 >50 章需要）
-- [ ] 深色模式 / 收纳面板
+- [ ] Character Agent + Relation Agent + 关系图
+- [ ] BubbleMemoryManager（长书上下文压缩）
+- [ ] 深色模式 / 书签
+- [ ] 多 API 切换
+
+详见 [docs/ROADMAP.md](../docs/ROADMAP.md)
 
 ## 数据存储
 

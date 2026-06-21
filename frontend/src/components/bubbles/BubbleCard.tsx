@@ -1,73 +1,175 @@
-import type { Bubble } from '../../types'
+import type { Bubble, CrossRef } from '../../types'
 
 const IMPORTANCE_BAR: Record<number, { width: string; color: string }> = {
-  1: { width: '1px', color: '#D0D0D0' },
-  2: { width: '1px', color: '#D0D0D0' },
-  3: { width: '1px', color: '#D0D0D0' },
-  4: { width: '2px', color: '#A0A0A0' },
-  5: { width: '2px', color: '#A0A0A0' },
-  6: { width: '2px', color: '#A0A0A0' },
-  7: { width: '3px', color: '#505050' },
-  8: { width: '3px', color: '#505050' },
-  9: { width: '4px', color: '#1A1A1A' },
-  10: { width: '4px', color: '#1A1A1A' },
+  1: { width: '3px', color: 'var(--border)' },
+  2: { width: '3px', color: 'var(--border)' },
+  3: { width: '3px', color: 'var(--border)' },
+  4: { width: '3px', color: 'var(--text-tertiary)' },
+  5: { width: '3px', color: 'var(--text-tertiary)' },
+  6: { width: '3px', color: 'var(--text-tertiary)' },
+  7: { width: '4px', color: 'var(--text-secondary)' },
+  8: { width: '4px', color: 'var(--text-secondary)' },
+  9: { width: '4px', color: 'var(--accent)' },
+  10: { width: '4px', color: 'var(--accent)' },
+}
+
+const LAYER_BORDER: Record<number, string> = {
+  1: 'var(--gold)',
+  2: 'var(--border)',
+  3: 'var(--border-light)',
+  4: 'transparent',
 }
 
 interface Props {
   bubble: Bubble
-  onClick: (bubble: Bubble) => void
-  onRightClick: (bubble: Bubble) => void
+  onClick: () => void
+  expanded?: boolean
+  expandable?: boolean
+  crossRefs?: CrossRef[]
+  children?: React.ReactNode
 }
 
-export default function BubbleCard({ bubble, onClick, onRightClick }: Props) {
+export default function BubbleCard({ bubble, onClick, expanded = false, expandable = false, crossRefs = [], children }: Props) {
   const bar = IMPORTANCE_BAR[bubble.importance] ?? IMPORTANCE_BAR[5]
+  const compact = expanded && expandable
+  const isPlaceholder = !bubble.title
+  const borderColor = LAYER_BORDER[bubble.layer] ?? LAYER_BORDER[3]
 
   return (
     <div
-      className="relative bg-[var(--bg-surface)] rounded-lg cursor-pointer
-                 hover:bg-[var(--bg-hover)] transition-colors duration-150"
-      onClick={() => onClick(bubble)}
-      onContextMenu={(e) => { e.preventDefault(); onRightClick(bubble) }}
+      id={`bubble-${bubble.id}`}
+      className="relative rounded-[var(--radius-md)]"
+      style={{
+        border: `1px solid ${borderColor}`,
+        backgroundColor: isPlaceholder ? 'var(--accent-soft)' : 'var(--bg-surface)',
+        cursor: 'default',
+        transitionProperty: 'border-color, box-shadow, background-color',
+        transitionDuration: '200ms',
+        transitionTimingFunction: 'var(--ease-out)',
+      }}
     >
-      {/* 左侧重要性色条 */}
-      <div
-        className="absolute left-0 top-0 bottom-0 rounded-l-lg"
-        style={{ width: bar.width, backgroundColor: bar.color }}
-      />
+      {/* Left importance bar */}
+      <div className="absolute left-0 top-0 bottom-0 rounded-l-[var(--radius-md)]"
+        style={{ width: bar.width, backgroundColor: bar.color }} />
 
-      <div className="pl-4 pr-3 py-2.5">
-        {/* 标题行（L4 不显示标题，只显正文） */}
+      <div style={{
+        paddingLeft: 20, paddingRight: 12,
+        paddingTop: compact ? 6 : 10,
+        paddingBottom: compact ? 6 : 10,
+        transitionProperty: 'padding',
+        transitionDuration: '200ms',
+        transitionTimingFunction: 'var(--ease-out)',
+      }}>
+        {/* ── Header row (click to toggle) ── */}
         {bubble.layer !== 4 && (
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-[var(--text-primary)] truncate">
-              {bubble.title}
-            </span>
-            {bubble.story_time_label && (
-              <span className="text-[10px] text-[var(--text-tertiary)] whitespace-nowrap">
-                {bubble.story_time_label}
+          <div
+            className="flex items-center gap-2"
+            style={{
+              minHeight: compact ? 20 : 28,
+              cursor: expandable ? 'pointer' : 'default',
+              userSelect: 'none',
+            }}
+            onClick={expandable ? onClick : undefined}
+          >
+            {expandable && (
+              <span
+                className={`shrink-0 ${expanded ? 'rotate-90' : ''}`}
+                style={{
+                  color: 'var(--text-tertiary)',
+                  transitionProperty: 'transform, color',
+                  transitionDuration: '200ms',
+                  transitionTimingFunction: 'var(--ease-out)',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/>
+                </svg>
               </span>
             )}
+            <span
+              className="font-medium truncate flex-1"
+              style={{
+                fontFamily: bubble.layer === 1 ? 'var(--font-display)' : 'var(--font-ui)',
+                fontSize: compact ? 12 : 14,
+                fontWeight: compact ? 400 : 500,
+                color: compact ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                transitionProperty: 'font-size, color, font-weight',
+                transitionDuration: '200ms',
+                transitionTimingFunction: 'var(--ease-out)',
+              }}
+            >
+              {bubble.title || (bubble.layer === 3 && bubble.child_count === 0 ? '待分组' : '待解析')}
+            </span>
+            <span className="text-[10px] shrink-0 px-1.5 py-0.5 rounded-full"
+              style={{
+                fontFamily: 'var(--font-ui)',
+                color: 'var(--text-tertiary)',
+                backgroundColor: compact ? 'transparent' : 'var(--bg-hover)',
+              }}>
+              L{bubble.layer}
+            </span>
+            <span className="text-[10px] shrink-0"
+              style={{
+                fontFamily: 'var(--font-ui)',
+                color: bar.color,
+                fontWeight: 600,
+                minWidth: 16, textAlign: 'center',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+              {bubble.importance}
+            </span>
           </div>
         )}
 
-        {/* 正文摘要 */}
-        <p className={`text-xs text-[var(--text-secondary)] ${bubble.layer === 4 ? '' : 'mt-1'} line-clamp-2`}>
-          {bubble.content}
-        </p>
+        {/* ── Body: content (hidden when compact) ── */}
+        {!compact && (
+          <div className="animate-fade-in"
+            onClick={bubble.layer === 4 ? onClick : (expandable ? onClick : undefined)}
+            style={{ cursor: (bubble.layer === 4 || expandable) ? 'pointer' : 'default' }}
+          >
+            {bubble.layer === 4 && bubble.content && (
+              <p className="text-xs leading-relaxed"
+                style={{ fontFamily: 'var(--font-body)', color: 'var(--text-body)' }}>
+                {bubble.content}
+              </p>
+            )}
+            {bubble.layer !== 4 && bubble.content && (
+              <p className="mt-1 text-xs line-clamp-2"
+                style={{
+                  fontFamily: 'var(--font-ui)',
+                  color: 'var(--text-secondary)',
+                  textWrap: 'pretty',
+                }}>
+                {bubble.content}
+              </p>
+            )}
+            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {bubble.story_time_label && (
+                <span className="text-[10px]" style={{ fontFamily: 'var(--font-ui)', color: 'var(--text-tertiary)' }}>
+                  {bubble.story_time_label}
+                </span>
+              )}
+              {bubble.child_count > 0 && !expandable && (
+                <span className="text-[10px]" style={{ fontFamily: 'var(--font-ui)', color: 'var(--text-tertiary)' }}>
+                  {bubble.child_count} 子节点
+                </span>
+              )}
+              {crossRefs.length > 0 && (
+                <span className="text-[10px]" style={{ fontFamily: 'var(--font-ui)', color: 'var(--gold)' }}>
+                  {crossRefs.length} 关联
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
-        {/* 底部指示器 */}
-        <div className="flex items-center gap-2 mt-1.5">
-          {bubble.child_count > 0 && (
-            <span className="text-[10px] text-[var(--text-tertiary)]">
-              {bubble.child_count} 个子节点
-            </span>
-          )}
-          {bubble.has_cross_refs && (
-            <span className="text-[10px] text-[var(--emphasis)]">
-              ↗ 关联
-            </span>
-          )}
-        </div>
+        {/* ── Children boards (only visible when expanded) ── */}
+        {compact && children && (
+          <div className="animate-expand-in mt-2"
+            style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {children}
+          </div>
+        )}
       </div>
     </div>
   )
